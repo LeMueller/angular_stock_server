@@ -1,4 +1,5 @@
 import * as express from 'express';
+import { Server } from 'ws';
 
 const app = express();
 
@@ -20,7 +21,28 @@ app.get('/api/stock/:id', (req,res) => {
 
 const server = app.listen(8000, 'localhost', ()=>{
     console.log('服务器已启动，地址是http://localhost:8000');
-})
+});
+
+// 连接上来的用户集合
+let subscriptions = new Set<any>();
+
+// 有用户连上来，就加到subscription里
+const wsServer = new Server({port: 8085});
+wsServer.on("connection", websocket => {
+    subscriptions.add(websocket);
+});
+
+let messageCount = 0;
+// 每隔两秒，messageCount 加 1， 然后发出去
+setInterval(() => {
+    subscriptions.forEach(ws => {
+        if(ws.readyState == 1) {
+            ws.send(JSON.stringify({messageCount: messageCount++}));
+        } else {
+            subscriptions.delete(ws);
+        }
+    })
+}, 2000);
 
 export class Stock {
     constructor(
